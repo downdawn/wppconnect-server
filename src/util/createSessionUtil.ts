@@ -15,6 +15,7 @@
  */
 import { create, SocketState } from '@wppconnect-team/wppconnect';
 import { Request } from 'express';
+import { anonymizeProxy, closeAnonymizedProxy } from 'proxy-chain';
 
 import { download } from '../controller/sessionController';
 import { WhatsAppServer } from '../types/WhatsAppServer';
@@ -44,6 +45,19 @@ export default class CreateSessionUtil {
       if (client.status != null && client.status !== 'CLOSED') return;
       client.status = 'INITIALIZING';
       client.config = req.body;
+
+      const { proxyUrl } = req.body;
+
+      if (proxyUrl) {
+        const newProxyUrl = await anonymizeProxy(proxyUrl);
+        if ('--proxy-server' in req.serverOptions.createOptions.args) {
+          req.serverOptions.createOptions.args['--proxy-server'] = newProxyUrl;
+        } else {
+          req.serverOptions.createOptions.args.push(
+            `--proxy-server=${newProxyUrl}`
+          );
+        }
+      }
 
       const tokenStore = new Factory();
       const myTokenStore = tokenStore.createTokenStory(client);
@@ -100,6 +114,9 @@ export default class CreateSessionUtil {
                   client.qrcode = null;
                   client.close();
                   clientsArray[session] = undefined;
+                  if (proxyUrl) {
+                    closeAnonymizedProxy(proxyUrl, true);
+                  }
                 }
                 callWebHook(client, req, 'status-find', {
                   status: statusFind,
@@ -279,6 +296,7 @@ export default class CreateSessionUtil {
       callWebHook(client, req, 'onrevokedmessage', response);
     });
   }
+
   async onPollResponse(client: WhatsAppServer, req: Request) {
     await client.isConnected();
     await client.onPollResponse(async (response: any) => {
@@ -286,6 +304,7 @@ export default class CreateSessionUtil {
       callWebHook(client, req, 'onpollresponse', response);
     });
   }
+
   async onLabelUpdated(client: WhatsAppServer, req: Request) {
     await client.isConnected();
     await client.onUpdateLabel(async (response: any) => {

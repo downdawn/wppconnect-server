@@ -344,12 +344,16 @@
                   },
                   "waitQrCode": {
                     "type": "boolean"
+                  },
+                  "proxyUrl": {
+                    "type": "string"
                   }
                 }
               },
               "example": {
                 "webhook": "",
-                "waitQrCode": false
+                "waitQrCode": false,
+                "proxyUrl": ""
               }
             }
           }

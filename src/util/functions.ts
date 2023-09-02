@@ -32,6 +32,7 @@ import config from '../config';
 import { convert } from '../mapper/index';
 import { ServerOptions } from '../types/ServerOptions';
 import { bucketAlreadyExists } from './bucketAlreadyExists';
+import * as https from 'https';
 
 let mime: any, crypto: any; //, aws: any;
 if (config.webhook.uploadS3) {
@@ -118,8 +119,11 @@ export async function callWebHook(
       data = Object.assign({ event: event, session: client.session }, data);
       if (req.serverOptions.mapper.enable)
         data = await convert(req.serverOptions.mapper.prefix, data);
+      const agent = new https.Agent({
+        rejectUnauthorized: false,
+      });
       api
-        .post(webhook, data)
+        .post(webhook, data, { httpsAgent: agent })
         .then(() => {
           try {
             const events = ['unreadmessages', 'onmessage'];
